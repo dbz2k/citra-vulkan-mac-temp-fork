@@ -22,57 +22,57 @@ jobs:
         env:
           COMMIT_RANGE: ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
         run: ./.ci/linux-clang-format/docker.sh
-  build:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        image: ["linux-fresh", "linux-frozen", "linux-mingw"]
-    container:
-      image: citraemu/build-environments:${{ matrix.image }}
-      options: -u 1001
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      - name: Set up cache
-        uses: actions/cache@v3
-        with:
-          path: ~/.ccache
-          key: ${{ runner.os }}-${{ matrix.image }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-${{ matrix.image }}-
-      - name: Query tag name
-        uses: little-core-labs/get-git-tag@v3.0.2
-        id: tagName
-      - name: Build
-        run: ./.ci/${{ matrix.image }}/docker.sh
-        env:
-          ENABLE_COMPATIBILITY_REPORTING: "ON"
-      - name: Pack
-        run: ./.ci/${{ matrix.image }}/upload.sh
-        if: ${{ matrix.image != 'linux-frozen' }}
-        env:
-          NAME: ${{ matrix.image }}
-      - name: Upload
-        uses: actions/upload-artifact@v3
-        if: ${{ matrix.image != 'linux-frozen' }}
-        with:
-          name: ${{ matrix.image }}
-          path: artifacts/
-  source:
-    if: ${{ !github.head_ref }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      - name: Pack
-        run: ./.ci/source/build.sh
-      - name: Upload
-        uses: actions/upload-artifact@v3
-        with:
-          name: source
-          path: artifacts/
+  # build:
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     matrix:
+  #       image: ["linux-fresh", "linux-frozen", "linux-mingw"]
+  #   container:
+  #     image: citraemu/build-environments:${{ matrix.image }}
+  #     options: -u 1001
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         submodules: recursive
+  #     - name: Set up cache
+  #       uses: actions/cache@v3
+  #       with:
+  #         path: ~/.ccache
+  #         key: ${{ runner.os }}-${{ matrix.image }}-${{ github.sha }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-${{ matrix.image }}-
+  #     - name: Query tag name
+  #       uses: little-core-labs/get-git-tag@v3.0.2
+  #       id: tagName
+  #     - name: Build
+  #       run: ./.ci/${{ matrix.image }}/docker.sh
+  #       env:
+  #         ENABLE_COMPATIBILITY_REPORTING: "ON"
+  #     - name: Pack
+  #       run: ./.ci/${{ matrix.image }}/upload.sh
+  #       if: ${{ matrix.image != 'linux-frozen' }}
+  #       env:
+  #         NAME: ${{ matrix.image }}
+  #     - name: Upload
+  #       uses: actions/upload-artifact@v3
+  #       if: ${{ matrix.image != 'linux-frozen' }}
+  #       with:
+  #         name: ${{ matrix.image }}
+  #         path: artifacts/
+  # source:
+  #   if: ${{ !github.head_ref }}
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         submodules: recursive
+  #     - name: Pack
+  #       run: ./.ci/source/build.sh
+  #     - name: Upload
+  #       uses: actions/upload-artifact@v3
+  #       with:
+  #         name: source
+  #         path: artifacts/
   macos:
     runs-on: macos-latest
     steps:
@@ -103,98 +103,98 @@ jobs:
         with:
           name: macos
           path: artifacts/
-  windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      - name: Set up cache
-        uses: actions/cache@v3
-        with:
-          path: ~/.buildcache
-          key: ${{ runner.os }}-win-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-win-
-      - name: Query tag name
-        uses: little-core-labs/get-git-tag@v3.0.2
-        id: tagName
-      - name: Install dependencies
-        run: ./.ci/windows-msvc/deps.sh
-        shell: bash
-      - name: Set up MSVC
-        uses: ilammy/msvc-dev-cmd@v1
-      - name: Setup Vulkan SDK
-        uses: humbletim/setup-vulkan-sdk@v1.2.0
-        with:
-          vulkan-query-version: latest
-          vulkan-components: Glslang
-          vulkan-use-cache: true
-      - name: Test glslangValidator
-        run: glslangValidator --version
-      - name: Build
-        run: ./.ci/windows-msvc/build.sh
-        shell: bash
-        env:
-          ENABLE_COMPATIBILITY_REPORTING: "ON"
-      - name: Pack
-        run: ./.ci/windows-msvc/upload.ps1
-      - name: Upload
-        uses: actions/upload-artifact@v3
-        with:
-          name: msvc
-          path: artifacts/
-  android:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      - name: Set up cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-            ~/.ccache
-          key: ${{ runner.os }}-android-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-android-
-      - name: Query tag name
-        uses: little-core-labs/get-git-tag@v3.0.2
-        id: tagName
-      - name: Deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install ccache apksigner -y
-          sudo add-apt-repository -y ppa:savoury1/ffmpeg4
-          sudo apt-get update -y
-          sudo apt-get install --no-install-recommends -y glslang-dev glslang-tools
-      - name: Build
-        run: ./.ci/android/build.sh
-      - name: Copy and sign artifacts
-        env:
-          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
-        run: ./.ci/android/upload.sh
-      - name: Upload
-        uses: actions/upload-artifact@v3
-        with:
-          name: android
-          path: artifacts/
-  transifex:
-    runs-on: ubuntu-latest
-    container: citraemu/build-environments:linux-transifex
-    if: ${{ github.repository == 'citra-emu/citra' && !github.head_ref }}
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      - name: Update Translation
-        run: ./.ci/transifex/docker.sh
-        env:
-          TRANSIFEX_API_TOKEN: ${{ secrets.TRANSIFEX_API_TOKEN }}
+  # windows:
+  #   runs-on: windows-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         submodules: recursive
+  #     - name: Set up cache
+  #       uses: actions/cache@v3
+  #       with:
+  #         path: ~/.buildcache
+  #         key: ${{ runner.os }}-win-${{ github.sha }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-win-
+  #     - name: Query tag name
+  #       uses: little-core-labs/get-git-tag@v3.0.2
+  #       id: tagName
+  #     - name: Install dependencies
+  #       run: ./.ci/windows-msvc/deps.sh
+  #       shell: bash
+  #     - name: Set up MSVC
+  #       uses: ilammy/msvc-dev-cmd@v1
+  #     - name: Setup Vulkan SDK
+  #       uses: humbletim/setup-vulkan-sdk@v1.2.0
+  #       with:
+  #         vulkan-query-version: latest
+  #         vulkan-components: Glslang
+  #         vulkan-use-cache: true
+  #     - name: Test glslangValidator
+  #       run: glslangValidator --version
+  #     - name: Build
+  #       run: ./.ci/windows-msvc/build.sh
+  #       shell: bash
+  #       env:
+  #         ENABLE_COMPATIBILITY_REPORTING: "ON"
+  #     - name: Pack
+  #       run: ./.ci/windows-msvc/upload.ps1
+  #     - name: Upload
+  #       uses: actions/upload-artifact@v3
+  #       with:
+  #         name: msvc
+  #         path: artifacts/
+  # android:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         submodules: recursive
+  #     - name: Set up cache
+  #       uses: actions/cache@v3
+  #       with:
+  #         path: |
+  #           ~/.gradle/caches
+  #           ~/.gradle/wrapper
+  #           ~/.ccache
+  #         key: ${{ runner.os }}-android-${{ github.sha }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-android-
+  #     - name: Query tag name
+  #       uses: little-core-labs/get-git-tag@v3.0.2
+  #       id: tagName
+  #     - name: Deps
+  #       run: |
+  #         sudo apt-get update
+  #         sudo apt-get install ccache apksigner -y
+  #         sudo add-apt-repository -y ppa:savoury1/ffmpeg4
+  #         sudo apt-get update -y
+  #         sudo apt-get install --no-install-recommends -y glslang-dev glslang-tools
+  #     - name: Build
+  #       run: ./.ci/android/build.sh
+  #     - name: Copy and sign artifacts
+  #       env:
+  #         ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+  #         ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+  #         ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+  #       run: ./.ci/android/upload.sh
+  #     - name: Upload
+  #       uses: actions/upload-artifact@v3
+  #       with:
+  #         name: android
+  #         path: artifacts/
+  # transifex:
+  #   runs-on: ubuntu-latest
+  #   container: citraemu/build-environments:linux-transifex
+  #   if: ${{ github.repository == 'citra-emu/citra' && !github.head_ref }}
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         submodules: recursive
+  #     - name: Update Translation
+  #       run: ./.ci/transifex/docker.sh
+  #       env:
+  #         TRANSIFEX_API_TOKEN: ${{ secrets.TRANSIFEX_API_TOKEN }}
   release:
     runs-on: ubuntu-latest
     needs: [build, android, macos, source, windows]
