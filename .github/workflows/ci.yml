@@ -1,6 +1,7 @@
 name: citra-ci
 
 on:
+  workflow_dispatch:
   push:
     branches: [ "*" ]
     tags: [ "*" ]
